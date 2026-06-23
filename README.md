@@ -1,2 +1,0 @@
-# stocky
-Stock Screening Tool
