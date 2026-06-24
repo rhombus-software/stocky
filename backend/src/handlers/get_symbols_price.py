@@ -9,6 +9,7 @@ def get_symbols_price(symbols):
         try:
             ticker = yf.Ticker(symbol)
             current_price = ticker.fast_info['last_price']
+            name = ticker.info.get('shortName') or ticker.info.get('longName') or symbol
             print(current_price)
             print(f"Retrieved price for {symbol}: {current_price}")
             prev_day = tick[symbol].iloc[0]
@@ -16,6 +17,7 @@ def get_symbols_price(symbols):
             change = ((current_price - prev_day) / prev_day) * 100
             print(change)
             prices[symbol] = {
+                "name": name,
                 "current_price": current_price,
                 "change": change
             }

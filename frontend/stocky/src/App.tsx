@@ -45,33 +45,28 @@ function App() {
               return (
                 <article
                   key={item.indexName}
-                  className={`w-full rounded-xl border p-1.5 shadow-sm sm:p-3 ${
-                    isPositive
+                  className={`w-full rounded-xl border p-1.5 shadow-sm sm:p-3 ${isPositive
                       ? 'border-emerald-500/40 bg-emerald-500/10'
                       : 'border-rose-500/40 bg-rose-500/10'
-                  }`}
+                    }`}
                 >
-                   <div className="min-w-0 flex-1">
-                      <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-slate-50">
-                        {item.indexName}
-                      </p>
-                    </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="mt-3 font-semibold text-white text-xs">
+                  <div className="flex flex-col gap-1.5 items-center justify-between">
+                  <p className="overflow-hidden w-[80%] text-ellipsis whitespace-nowrap text-sm font-semibold text-slate-50">
+                    {item.indexName}
+                  </p>
+
+                  <p className="mt-3 font-semibold text-white text-xs">
                     {Number(item.last ?? 0).toLocaleString('en-IN', {
                       maximumFractionDigits: 2,
                     })}
                   </p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold sm:px-2.5 sm:text-xs ${
-                        isPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                  <p
+                    className={`rounded-full px-1 py-0.5 text-[10px] font-semibold sm:px-2.5 sm:text-xs ${isPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
                       }`}
-                    >
-                      {changeLabel}
-                    </span>
-                  </div>
-
-                 
+                  >
+                    {changeLabel}
+                  </p>
+</div>
                 </article>
               )
             })}
