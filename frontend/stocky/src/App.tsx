@@ -36,7 +36,7 @@ function App() {
             No indices match your search.
           </div>
         ) : (
-          <div className="grid gap-2 grid-cols-4">
+          <div className="grid gap-2 grid-cols-3">
             {data.map((item) => {
               const change = Number(item.percChange ?? 0)
               const isPositive = change >= 0
