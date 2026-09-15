@@ -30,7 +30,16 @@ jobs:
               working-directory: .job-runner
               run: |
                   python -m pip install --upgrade pip
-                  python -m pip install -e .
+                  python - <<'PY'
+                  import subprocess
+                  import sys
+                  import tomllib
+
+                  with open("pyproject.toml", "rb") as project_file:
+                      dependencies = tomllib.load(project_file)["project"]["dependencies"]
+
+                  subprocess.check_call([sys.executable, "-m", "pip", "install", *dependencies])
+                  PY
 
             - name: Run job script
               working-directory: .job-runner/jobs
