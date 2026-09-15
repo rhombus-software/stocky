@@ -104,7 +104,7 @@ if __name__ == "__main__":
         {"isin": isin, "symbol": f"{symbol}.NS"}
         for isin, symbol in data[["ISIN Code", "SYMBOL"]].itertuples(index=False, name=None)
         if isin and symbol
-    ][:2]
+    ]
     loader = HistoricDataLoader(catalog)
     result = loader.load_data()
     print(result)
