@@ -80,6 +80,108 @@ class DB:
             {"contentType": "text/csv", "upsert": "true"},
         )
 
+    def _flatten_column_names(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Flatten MultiIndex columns to strings."""
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = ["_".join(str(col).strip() for col in cols if str(col).strip()) 
+                         for cols in df.columns.values]
+        return df
+
+    def write_jsonb_to_table(
+        self,
+        table_name: str,
+        isin: str,
+        symbol: str,
+        value: dict[str, Any] | list[dict[str, Any]] | pd.DataFrame,
+    ) -> dict[str, Any]:
+        """
+        Write historical data as JSONB to a PostgreSQL table.
+        
+        :param table_name: The name of the table (e.g., 'historical_data')
+        :param isin: The stock ISIN (primary key)
+        :param symbol: The stock ticker symbol
+        :param value: JSON-compatible data or a DataFrame to store
+        :return: The response from the insert operation
+        """
+        try:
+            # Convert DataFrame to dict if needed
+            if isinstance(value, pd.DataFrame):
+                # Flatten MultiIndex columns to prevent tuple keys
+                value = self._flatten_column_names(value)
+                value = value.reset_index().to_dict('records')
+
+            # Prepare the record for insertion
+            record = {
+                "isin": isin,
+                "symbol": symbol,
+                "value": value,
+            }
+
+            # Upsert to handle duplicate symbols
+            response = self.client.table(table_name).upsert(record).execute()
+            return response.data if response else {}
+        except Exception as exc:
+            raise ValueError(
+                f"Error writing JSONB data for {symbol} to table {table_name}: {exc}"
+            ) from exc
+
+    def write_jsonb_batch_to_table(
+        self,
+        table_name: str,
+        records: list[tuple[str, str, dict[str, Any] | list[dict[str, Any]] | pd.DataFrame]],
+    ) -> dict[str, Any]:
+        """
+        Write multiple historical data records as JSONB to a PostgreSQL table in a single batch.
+        
+        :param table_name: The name of the table (e.g., 'historical_data')
+        :param records: List of (isin, symbol, value) tuples
+        :return: The response from the batch insert operation
+        """
+        try:
+            batch_records = []
+            for isin, symbol, value in records:
+                # Convert DataFrame to dict if needed
+                if isinstance(value, pd.DataFrame):
+                    # Flatten MultiIndex columns to prevent tuple keys
+                    value = self._flatten_column_names(value)
+                    value = value.reset_index().to_dict('records')
+
+                batch_records.append({
+                    "isin": isin,
+                    "symbol": symbol,
+                    "value": value,
+                })
+
+            # Batch upsert to handle duplicate symbols
+            response = self.client.table(table_name).upsert(batch_records).execute()
+            return response.data if response else {}
+        except Exception as exc:
+            raise ValueError(
+                f"Error writing batch JSONB data to table {table_name}: {exc}"
+            ) from exc
+
+    def read_symbol_bulk(
+        self,
+        table_name: str,
+        symbol: str,
+    ) -> dict[str, Any] | None:
+        """
+        Read historical data from a PostgreSQL table as JSONB.
+        
+        :param table_name: The name of the table (e.g., 'historical_data')
+        :param symbol: The stock symbol (primary key)
+        :return: The data as a dict or None if not found
+        """
+        try:
+            response = self.client.table(table_name).select("value").in_("symbol", [symbol]).execute()
+            if response and response.data:
+                return response.data[0].get("value")
+            return None
+        except Exception as exc:
+            raise ValueError(
+                f"Error reading JSONB data for {symbol} from table {table_name}: {exc}"
+            ) from exc
+
 # db = DB()  # Create a default DB instance using environment variables
 # df = db.read_csv("stock_lists", "ind-nse-stocks.csv")
 # print(df.head())

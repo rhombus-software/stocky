@@ -2,52 +2,26 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+from shared.DataFetcher import DataFetcher
 from shared.DB import DB  # Import the DB class from the shared module
 from shared.Logger import get_logger  # Import the logger from the shared module
-import yfinance as yf
 import pandas as pd
 
 logger = get_logger(__name__)  # Create a logger for this module
+
 class MACD:
-    def __init__(self, short_period=12, long_period=26, signal_period=9, catalog='ind-nse-stocks.csv'):
-        self.db = DB()  # Initialize the DB instance for use in the class
+    def __init__(self, short_period=12, long_period=26, signal_period=9, catalog='ind-nse-stocks.csv', data_fetcher=None):
+        self.data_fetcher = data_fetcher or DataFetcher()
+        self.db = self.data_fetcher.db  # Initialize the DB instance for use in the class
         self.short_period = short_period
         self.long_period = long_period
         self.signal_period = signal_period
         self.macd_lookback_days = 10
         self.catalog_file_path = catalog
-        self.symbols = self.load_symbols_from_catalog()
-
-    def load_symbols_from_catalog(self):
-        try:
-            logger.info(f"Loading symbols from catalog: {self.catalog_file_path}")
-            df = self.db.read_csv("stock_lists", self.catalog_file_path)
-            symbols = df['SYMBOL'].tolist()
-            logger.info(f"Catalog loaded successfully with {len(symbols)} symbols.")
-            return symbols
-        except Exception as e:
-            logger.error(f"Error loading symbols from catalog: {e}")
-            return []
-
+        self.symbols = self.data_fetcher.load_symbols(catalog)
 
     def fetch_symbol_data(self, symbol: str) -> pd.DataFrame | None:
-        try:
-            logger.info(f"Fetching data for {symbol}")
-            df = yf.download(
-                symbol,
-                period='max',
-                auto_adjust=True,
-                progress=False,
-            )
-            if df.empty:
-                return None
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(1)
-            print(df.columns)
-            return df
-        except Exception as exc:
-            logger.error(f"Error fetching data for {symbol}: {exc}")
-            return None
+        return self.data_fetcher.fetch_price_data(symbol)
 
 
     def calculate_macd(self, close: pd.Series) -> tuple[pd.Series, pd.Series]:
@@ -79,10 +53,11 @@ class MACD:
 
         return False, None
 
-    def analyze(self):
+    def analyze(self, price_data=None):
         results: list[dict] = []
         for symbol in self.symbols:
-            df = self.fetch_symbol_data(symbol+".NS")
+            yahoo_symbol = symbol + ".NS"
+            df = price_data.get(yahoo_symbol) if price_data is not None else self.fetch_symbol_data(yahoo_symbol)
             if df is not None:
                 logger.info(f"Data fetched for {symbol}, processing...")
                 # Here you would implement the MACD calculation and analysis
