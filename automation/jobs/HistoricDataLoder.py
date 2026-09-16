@@ -9,6 +9,7 @@ from pandas import MultiIndex
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from shared.Logger import get_logger 
 from shared.DB import DB
+import os
 
 logger = get_logger("Data loader")
 db = DB()
@@ -99,7 +100,8 @@ class HistoricDataLoader:
 
 if __name__ == "__main__":
     # Example usage
-    data = db.read_csv("stock_lists", "ind-nse-nifty100-stocks.csv")
+    catalog_file_name =  "ind-nse-nifty100-stocks.csv" or os.getenv("CATALOG_FILE_PATH")
+    data = db.read_csv("stock_lists", catalog_file_name)
     catalog = [
         {"isin": isin, "symbol": f"{symbol}.NS"}
         for isin, symbol in data[["ISIN Code", "SYMBOL"]].itertuples(index=False, name=None)
