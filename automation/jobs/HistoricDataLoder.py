@@ -29,7 +29,7 @@ class HistoricDataLoader:
                 if isinstance(df.columns, MultiIndex):
                     df.columns = df.columns.droplevel(1)
                     df.reset_index(inplace=True)
-                    return {"isin": isin, "symbol": symbol, "data": loads(df.to_json(orient="records", date_format="iso")), "status": "success"}
+                    return {"isin": isin, "symbol": symbol, "data": df.to_json(orient="records", date_format="iso"), "status": "success"}
             logger.warning(f"No data for {symbol}")
             return {"isin": isin, "symbol": symbol, "status": "no_data"}
         except Exception as e:
@@ -52,7 +52,7 @@ class HistoricDataLoader:
             return {"success": False, "error": str(e)}
 
     async def _load_async(self, table_name: str) -> Dict[str, Any]:
-        """Asynchronously load data in batches of 500 symbols."""
+        """Asynchronously fetch and write data in batches of 50 symbols."""
         results = {
             "success": True,
             "total": len(self.catalog),
@@ -62,15 +62,15 @@ class HistoricDataLoader:
             "errors": []
         }
         
-        batch_size = 500
+        batch_size = 50
+        db.clear_table(table_name)
         for i in range(0, len(self.catalog), batch_size):
             batch = self.catalog[i:i + batch_size]
             batch_num = (i // batch_size) + 1
             logger.info(f"Processing batch {batch_num}: {len(batch)} symbols")
             
             batch_results = await self.fetch_batch(batch)
-            
-            # Collect successful results for batch write
+
             records_to_write = []
             for result in batch_results:
                 symbol = result["symbol"]
@@ -81,7 +81,7 @@ class HistoricDataLoader:
                     results["failed_symbols"].append(symbol)
                     error_msg = result.get("error", "Unknown error")
                     results["errors"].append({"symbol": symbol, "error": error_msg})
-            print(records_to_write[1])
+
             if records_to_write:
                 try:
                     db.write_jsonb_batch_to_table(table_name, records_to_write)

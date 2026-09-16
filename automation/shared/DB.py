@@ -103,27 +103,10 @@ class DB:
         :param value: JSON-compatible data or a DataFrame to store
         :return: The response from the insert operation
         """
-        try:
-            # Convert DataFrame to dict if needed
-            if isinstance(value, pd.DataFrame):
-                # Flatten MultiIndex columns to prevent tuple keys
-                value = self._flatten_column_names(value)
-                value = value.reset_index().to_dict('records')
-
-            # Prepare the record for insertion
-            record = {
-                "isin": isin,
-                "symbol": symbol,
-                "value": value,
-            }
-
-            # Upsert to handle duplicate symbols
-            response = self.client.table(table_name).upsert(record).execute()
-            return response.data if response else {}
-        except Exception as exc:
-            raise ValueError(
-                f"Error writing JSONB data for {symbol} to table {table_name}: {exc}"
-            ) from exc
+        return self.write_jsonb_batch_to_table(
+            table_name,
+            [(isin, symbol, value)],
+        )
 
     def write_jsonb_batch_to_table(
         self,
@@ -152,12 +135,26 @@ class DB:
                     "value": value,
                 })
 
-            # Batch upsert to handle duplicate symbols
-            response = self.client.table(table_name).upsert(batch_records).execute()
+            if not batch_records:
+                return {}
+
+            response = self.client.table(table_name).upsert(
+                batch_records,
+                on_conflict="isin",
+            ).execute()
             return response.data if response else {}
         except Exception as exc:
             raise ValueError(
                 f"Error writing batch JSONB data to table {table_name}: {exc}"
+            ) from exc
+
+    def clear_table(self, table_name: str) -> None:
+        """Delete all rows from a table before starting a new load."""
+        try:
+            self.client.table(table_name).delete().neq("isin", "").execute()
+        except Exception as exc:
+            raise ValueError(
+                f"Error clearing table {table_name}: {exc}"
             ) from exc
 
     def read_symbol_bulk(
