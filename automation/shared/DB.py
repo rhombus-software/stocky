@@ -56,6 +56,7 @@ class DB:
         *,
         encoding: str = "utf-8",
     ) -> pd.DataFrame:
+        logger.info(f"Fetching file from {file_path}")
         blob = self.get_bucket(bucket_name).download(file_path)
         csv_text = blob.decode(encoding) if isinstance(blob, (bytes, bytearray)) else str(blob)
         return pd.read_csv(io.StringIO(csv_text))
