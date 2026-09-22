@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -5,7 +6,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
-from shared.DB import DB
 from shared.Logger import get_logger
 
 
@@ -63,13 +63,25 @@ class RSI:
 
 	def analyze(self):
 		results: list[dict] = []
-		for row in self.data.itertupel():
+		# Fix typo: itertuples instead of itertupel
+		for row in self.data.itertuples():
 			symbol = row.symbol
-			price_data = pd.from_json(row.value)
+			# The 'value' column from Supabase may be a JSON string or a list
+			raw_value = row.value
+			if isinstance(raw_value, str):
+				try:
+					raw_value = json.loads(raw_value)
+				except (json.JSONDecodeError, TypeError):
+					logger.warning(f"Could not parse historical data for {symbol}")
+					continue
+
+			price_data = pd.DataFrame(raw_value)
+			if not price_data.empty and "Date" in price_data.columns:
+				price_data.set_index("Date", inplace=True)
 			isin = row.isin
-			if price_data is not None:
+			if price_data is not None and not price_data.empty:
 				logger.info(f"Data fetched for {symbol}, processing...")
-				rsi = self.calculate_rsi(df["Close"])
+				rsi = self.calculate_rsi(price_data["Close"])
 				recovered_from_oversold, recovery_date = self.check_rsi_recovery(rsi)
 				current_rsi = rsi.iloc[-1]
 				results.append(
@@ -89,11 +101,13 @@ class RSI:
 		return results
 
 
-if __name__ == "__main__":
-	strat = RSI()
-	result = strat.analyze()
-	strat.db.write_csv(
-		"reports",
-		f"rsi/ind-mse{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-		result,
-	)
+# if __name__ == "__main__":
+# 	db = DB()
+# 	data = db.read_all_symbols()
+# 	strat = RSI(data=data)
+# 	result = strat.analyze()
+# 	strat.db.write_csv(
+# 		"reports",
+# 		f"rsi/ind-mse{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+# 		result,s
+# 	)

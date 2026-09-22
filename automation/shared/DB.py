@@ -6,6 +6,9 @@ from typing import Any, Iterable
 import pandas as pd
 from dotenv import load_dotenv
 
+from shared.Logger import get_logger
+logger = get_logger(__name__)
+
 load_dotenv(Path(__file__).resolve().with_name(".env"))
 
 try:
@@ -60,6 +63,21 @@ class DB:
         blob = self.get_bucket(bucket_name).download(file_path)
         csv_text = blob.decode(encoding) if isinstance(blob, (bytes, bytearray)) else str(blob)
         return pd.read_csv(io.StringIO(csv_text))
+
+    def download_file(
+        self,
+        bucket_name: str,
+        file_path: str,
+        local_path: str | Path | None = None,
+    ) -> bytes:
+        logger.info(f"Downloading file {file_path} from bucket {bucket_name}")
+        blob = self.get_bucket(bucket_name).download(file_path)
+        if local_path:
+            dest = Path(local_path)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(blob)
+            logger.info(f"File saved locally to {dest}")
+        return blob
 
     def write_csv(
         self,

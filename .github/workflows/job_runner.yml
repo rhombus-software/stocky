@@ -24,7 +24,7 @@ jobs:
               run: |
                   mkdir -p .job-runner
                   cp automation/pyproject.toml .job-runner/
-                  cp -r automation/shared automation/jobs .job-runner/
+                  cp -r automation/shared automation/jobs automation/strategies .job-runner/
 
             - name: Install automation dependencies
               working-directory: .job-runner
@@ -41,7 +41,12 @@ jobs:
                   subprocess.check_call([sys.executable, "-m", "pip", "install", *dependencies])
                   PY
 
-            - name: Run job script
+            - name: Run Historic Data Loader
               working-directory: .job-runner/jobs
               run: |
                   python HistoricDataLoder.py
+
+            - name: Run Strategies Runner
+              working-directory: .job-runner
+              run: |
+                  python strategies/Runner.py

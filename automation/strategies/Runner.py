@@ -1,10 +1,12 @@
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-
+import pandas as pd
 from shared.Logger import get_logger
 from shared.DB import DB
 from strategies.RSI import RSI
+from strategies.MACD import MACD
+
 logger = get_logger(__name__)
 db = DB()
 class Runner:
@@ -16,15 +18,22 @@ class Runner:
     def set_strategies(self, strategies):
         self.strategies = strategies
         
-    def run():
-        loogger.info("Running strategiess")
+    def run(self):
+        logger.info("Running strategies")
         for strategy in self.strategies:
-            logger.info(f"Running strategies {strategy.name}")
-            data = strategy.analyze()
-            print(data.head(2))
+            strategy_name = strategy.__class__.__name__
+            logger.info(f"Running strategy: {strategy_name}")
+            results = strategy.analyze()
+            if results:
+                db.write_csv(
+                    "reports",
+                    f"{strategy_name}/{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    results
+                )
+                logger.info("Completed")
 
 if __name__ == '__main__':
     runner = Runner()
     print(runner.data)
-    runner.set_strategies([RSI(data=runner.data)])
+    runner.set_strategies([RSI(data=runner.data), MACD(data=runner.data)])
     runner.run()
