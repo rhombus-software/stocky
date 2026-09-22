@@ -5,7 +5,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
-from shared.DataFetcher import DataFetcher
 from shared.DB import DB
 from shared.Logger import get_logger
 
@@ -15,23 +14,16 @@ logger = get_logger(__name__)
 class RSI:
 	def __init__(
 		self,
+		data,
 		period=14,
 		oversold=20,
 		overbought=60,
-		catalog="ind-nse-stocks.csv",
-		data_fetcher=None,
 	):
-		self.data_fetcher = data_fetcher or DataFetcher()
-		self.db = self.data_fetcher.db
 		self.period = period
 		self.oversold = oversold
 		self.overbought = overbought
 		self.rsi_lookback_days = 10
-		self.catalog_file_path = catalog
-		self.symbols = self.data_fetcher.load_symbols(catalog)
-
-	def fetch_symbol_data(self, symbol: str) -> pd.DataFrame | None:
-		return self.data_fetcher.fetch_price_data(symbol)
+		self.data = data
 
 	def calculate_rsi(self, close: pd.Series) -> pd.Series:
 		logger.info(f"Calculating RSI with period={self.period}")
@@ -69,24 +61,26 @@ class RSI:
 
 		return False, None
 
-	def analyze(self, price_data=None):
+	def analyze(self):
 		results: list[dict] = []
-		for symbol in self.symbols:
-			yahoo_symbol = symbol + ".NS"
-			df = price_data.get(yahoo_symbol) if price_data is not None else self.fetch_symbol_data(yahoo_symbol)
-			if df is not None:
+		for row in self.data.itertupel():
+			symbol = row.symbol
+			price_data = pd.from_json(row.value)
+			isin = row.isin
+			if price_data is not None:
 				logger.info(f"Data fetched for {symbol}, processing...")
 				rsi = self.calculate_rsi(df["Close"])
 				recovered_from_oversold, recovery_date = self.check_rsi_recovery(rsi)
 				current_rsi = rsi.iloc[-1]
 				results.append(
 					{
+						"isin": isin,
 						"symbol": symbol,
 						"recovered_from_oversold": recovered_from_oversold,
 						"recovery_date": recovery_date,
 						"is_overbought": current_rsi >= self.overbought,
 						"current_rsi": current_rsi,
-						"current_price": df["Close"].iloc[-1],
+						"current_price": price_data["Close"].iloc[-1],
 					}
 				)
                 

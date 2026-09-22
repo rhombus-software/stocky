@@ -158,6 +158,11 @@ class DB:
                 f"Error clearing table {table_name}: {exc}"
             ) from exc
 
+    def read_all_symbols(self) -> pd.DataFrame:
+        response = self.client.table("stock_historical").select("*").execute()
+        return pd.DataFrame(response.data)
+
+
     def read_symbol_bulk(
         self,
         table_name: str,
