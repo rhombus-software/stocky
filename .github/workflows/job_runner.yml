@@ -1,6 +1,5 @@
 name: Job Runner
 on:
-    workflow_dispatch: 
     workflow_dispatch:
     schedule:
         # Run every day at 8 PM IST (14:30 UTC)
