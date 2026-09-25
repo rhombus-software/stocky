@@ -9,4 +9,7 @@ dependencies = [
     "pandas",
     "supabase",
     "yfinance",
+    "robotframework",
+    "robotframework-seleniumlibrary",
+    "openpyxl>=3.1.5",
 ]
