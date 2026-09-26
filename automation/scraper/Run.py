@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+
 import os
 import sys
 import getpass
@@ -5,8 +10,10 @@ import robot
 from dotenv import load_dotenv
 import shutil
 import pandas as pd
-
+from shared.DB import DB
 load_dotenv()
+
+db = DB()
 
 
 def main():
@@ -54,14 +61,20 @@ def main():
     print("Cleaning existing result directoyr")
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    shutil.rmtree(os.path.join(current_dir, "results"))
     base_dir = os.path.dirname(current_dir)  # Navigates up to the 'automation' directory
     robot_file = os.path.join(base_dir, "scraper/login_flow.robot")
     output_dir = os.path.join(base_dir, "scraper/results")
+    report_dir = os.path.join(base_dir, "scraper/reports")
     
     if not os.path.exists(robot_file):
         print(f"Error: The Robot Framework file was not found at expected path: {robot_file}")
         sys.exit(1)
+
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    
+    if os.path.exists(report_dir):
+        shutil.rmtree(report_dir)
     
     # Pre-create output directory structures
     os.makedirs(output_dir, exist_ok=True)
@@ -87,14 +100,24 @@ def parse_holding_reports():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     base_dir = os.path.dirname(current_dir)
     report_path = os.path.join(base_dir, "scraper/reports")
-    data = pd.read_excel(report_path+"/Mutual_Funds_3243591959_25-09-2026_25-09-2026.xlsx")
+    data = pd.read_excel(report_path+"/MutualFunds.xlsx")
     data = data.dropna()
     data = data.reset_index(drop=True)
     new_header = data.iloc[0].values
     data.columns = new_header
-    final_df = data[1:]
-    print(final_df.columns)
+    final_mf_df = data[1:]
+    data = pd.read_excel(report_path+"/Stocks.xlsx")
+    data = data.dropna()
+    data = data.reset_index(drop=True)
+    new_header = data.iloc[0].values
+    data.columns = new_header
+    final_stock_df = data[1:]
+
+    db.write_csv("holding_statements",f"groww/MutualFunds.csv",final_mf_df)
+    db.write_csv("holding_statements",f"groww/STOCKS.csv",final_stock_df)
+
 
 
 if __name__ == "__main__":
+    main()
     parse_holding_reports()

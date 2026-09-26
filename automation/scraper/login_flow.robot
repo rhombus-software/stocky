@@ -25,13 +25,15 @@ Execute Groww Login Phase 1
     Step 7: Navigate To Reports Section
     Step 8: Select Mutual Fund Holdings
     Step 9: Download Holdings File
-    Step 10: Download Stock Holdings File
+    Step 10: Select Stocks Holdings
+    Step 11: Download Stock Holdings File
     [Teardown]    Close Browser
 
 *** Keywords ***
 Initialize Automation Environment
     Set Screenshot Directory    ${SCREENSHOT_DIR}
     Create Directory    ${CURDIR}/reports
+    Empty Directory    ${CURDIR}/reports
     ${prefs}=    Create Dictionary    download.default_directory=${CURDIR}/reports
     Open Browser    ${URL}    ${BROWSER}    options=add_argument("--headless=new"); add_argument("--window-size=1920,1080"); add_argument("--no-sandbox"); add_argument("--disable-dev-shm-usage"); add_experimental_option("prefs", ${prefs})
     Maximize Browser Window
@@ -121,9 +123,9 @@ Step 9: Download Holdings File
     Execute Javascript    arguments[0].click();    ARGUMENTS    ${download_btn}
     Sleep    5s    # Wait for file download to conclude
     Capture Page Screenshot    step9_download_clicked.png
+    Wait Until Keyword Succeeds    15s    1s    Check And Rename File    mutualfund.xlsx
 
 Step 10: Select Stocks Holdings  
-    Wait Until Element Is Visible    xpath=//div[contains(@class, "reportCategory_reportItem") and contains(., "Stocks - Holdings statement")]    timeout=20s
     Click Element    xpath=//div[contains(@class, "reportCategory_reportItem") and contains(., "Stocks - Holdings statement")]
     Capture Page Screenshot    step10_stock_holdings_clicked.png
 
@@ -134,3 +136,21 @@ Step 11: Download Stock Holdings File
     Execute Javascript    arguments[0].click();    ARGUMENTS    ${download_btn}
     Sleep    5s    # Wait for file download to conclude
     Capture Page Screenshot    step11_download_clicked.png
+    Wait Until Keyword Succeeds    15s    1s    Check And Rename File    stock.xlsx
+
+Check And Rename File
+    [Arguments]    ${target_name}
+    ${files}=    List Files In Directory    ${CURDIR}/reports
+    ${found}=    Set Variable    ${FALSE}
+    FOR    ${file}    IN    @{files}
+        ${is_temp}=    Evaluate    '${file}'.endswith('.crdownload') or '${file}'.startswith('.com.google.Chrome')
+        ${is_target}=    Evaluate    '${file}' == 'mutualfund.xlsx' or '${file}' == 'stock.xlsx'
+        IF    not ${is_temp} and not ${is_target}
+            Move File    ${CURDIR}/reports/${file}    ${CURDIR}/reports/${target_name}
+            ${found}=    Set Variable    ${TRUE}
+            Exit For Loop
+        END
+    END
+    IF    not ${found}
+        Fail    No downloaded file found to rename
+    END
