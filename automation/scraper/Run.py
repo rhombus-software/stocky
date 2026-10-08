@@ -4,6 +4,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
 import os
+import json
 import sys
 import getpass
 import robot
@@ -116,8 +117,53 @@ def parse_holding_reports():
     db.write_csv("holding_statements",f"groww/MutualFunds.csv",final_mf_df)
     db.write_csv("holding_statements",f"groww/STOCKS.csv",final_stock_df)
 
+def run_screener_scraper(symbol: str = "TCS", browser: str = "headlesschrome", output_dir: str | None = None):
+    """
+    Executes screener_scraper.robot using Robot Framework's Python API.
+    Overrides the target URL and output paths dynamically.
+
+    :param symbol: Stock ticker symbol (e.g., 'TCS', 'INFY', 'RELIANCE')
+    :param browser: 'chrome' or 'headlesschrome'
+    :param output_dir: Directory to store the output JSON and Robot logs
+    :return: Parsed dict from shareholding_pattern.json, or None on failure
+    """
+    current_dir = Path(__file__).resolve().parent
+    robot_file = current_dir / "screener_scraper.robot"
+
+    if not robot_file.exists():
+        print(f"[ERROR] Robot file not found at: {robot_file}")
+        return None
+
+    result_dir = Path(output_dir) if output_dir else current_dir / "result"
+    result_dir.mkdir(parents=True, exist_ok=True)
+    json_file = result_dir / "shareholding_pattern.json"
+    url = f"https://www.screener.in/company/{symbol}/consolidated/#shareholding"
+
+    variables = [
+        f"URL:{url}",
+        f"BROWSER:{browser}",
+        f"OUTPUT_DIR:{result_dir}",
+        f"OUTPUT_FILE:{json_file}",
+    ]
+
+    print(f"\n[INFO] Starting Screener scraper for symbol: {symbol}")
+    exit_code = robot.run(
+        str(robot_file),
+        variable=variables,
+        outputdir=str(result_dir / "logs"),
+        console="verbose"
+    )
+
+    if exit_code == 0 and json_file.exists():
+        print(f"[SUCCESS] Scraped data saved to: {json_file}")
+        with open(json_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    print(f"[FAILURE] Screener scraping failed with exit code: {exit_code}")
+    return None
 
 
 if __name__ == "__main__":
-    main()
-    parse_holding_reports()
+    # main()
+    # parse_holding_reports()
+    run_screener_scraper()

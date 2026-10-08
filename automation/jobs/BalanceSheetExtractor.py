@@ -11,7 +11,6 @@ from shared.Logger import get_logger
 logger = get_logger(__name__)
 
 
-
 def get_data():
     logger.info("Fetching data")
     symbols_catalog = db.read_all_symbols()
