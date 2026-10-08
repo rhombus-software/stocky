@@ -3,10 +3,10 @@ import json
 import sys
 from functools import partial
 from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from typing import List, Dict, Any
 import yfinance as yf
 from pandas import MultiIndex
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 from shared.Logger import get_logger 
 from shared.DB import DB
 import os
@@ -24,7 +24,7 @@ class HistoricDataLoader:
         try:
             loop = asyncio.get_event_loop()
             logger.info(f"Fetching data for {symbol}")
-            download_func = partial(yf.download, symbol, period="max", progress=False)
+            download_func = partial(yf.download, symbol, period="10y", progress=False)
             df = await loop.run_in_executor(None, download_func)
             if df is not None and not df.empty:
                 if isinstance(df.columns, MultiIndex):
@@ -100,11 +100,12 @@ class HistoricDataLoader:
 
 if __name__ == "__main__":
     # Example usage
-    catalog_file_name =  "ind-nse-nifty100-stocks.csv" or os.getenv("CATALOG_FILE_PATH")
+    catalog_file_name =  "us-nasdaq-stocks.csv" or os.getenv("CATALOG_FILE_PATH")
     data = db.read_csv("stock_lists", catalog_file_name)
+    print(data.columns)
     catalog = [
-        {"isin": isin, "symbol": f"{symbol}.NS"}
-        for isin, symbol in data[["ISIN Code", "SYMBOL"]].itertuples(index=False, name=None)
+        {"isin": isin, "symbol": f"{symbol}.NS" if country != 'US' else symbol}
+        for isin, symbol, country in data[["ISIN Code", "SYMBOL", "Country"]].itertuples(index=False, name=None)
         if isin and symbol
     ]
     loader = HistoricDataLoader(catalog)
